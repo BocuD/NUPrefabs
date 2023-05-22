@@ -128,6 +128,8 @@ namespace Nessie.Udon.SaveState
         
         [NonSerialized] public bool UseFallbackAvatar = true;
 
+        public bool debugMode = false;
+
         #endregion Public Fields
 
         #region Public Properties
@@ -438,15 +440,15 @@ namespace Nessie.Udon.SaveState
 
         public void _SetData() // Write data by doing float additions.
         {
-            //Log($"Writing data for avatar {ProgressCurrentAvatar}: data byte index {dataByteIndex}");
+            Debug.Log($"Writing data for avatar {currentAvatarindex}: data byte index {currentByteIndex}");
 
-            if(currentPageIndex==-1)Debug.Log("Saving Data...");
+            if (currentPageIndex == -1) Debug.Log("Saving Data...");
             
             int avatarByteCount = bufferBytes[currentAvatarindex].Length;
 
             bool controlBit = currentByteIndex % 6 == 0; // Mod the 9th bit in order to control the animator steps.
             byte[] avatarBytes = bufferBytes[currentAvatarindex];
-            //Debug.Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} {avatarBytes[currentByteIndex+1]:X2} {avatarBytes[currentByteIndex+2]:X2} ");
+            
             int byte1 = currentByteIndex < avatarByteCount ? avatarBytes[currentByteIndex++] : 0;
             int byte2 = currentByteIndex < avatarByteCount ? avatarBytes[currentByteIndex++] : 0;
             int byte3 = currentByteIndex < avatarByteCount ? avatarBytes[currentByteIndex++] : 0;
@@ -458,12 +460,26 @@ namespace Nessie.Udon.SaveState
             Vector3 newVelocity = (new Vector3(byte1, byte2, byte3) + (Vector3.one / 8f)) / 256f / 32f; // 8 data bits and 1 control bit (0-511)
             localPlayer.SetVelocity(localPlayer.GetRotation() * newVelocity);
 
-            //string debugBits = $"{Convert.ToString(byte1, 2).PadLeft(8, '0')}, {Convert.ToString(byte2, 2).PadLeft(8, '0')}, {Convert.ToString(byte3, 2).PadLeft(8, '0')}";
-            //string debugVels = $"{newVelocity.x}, {newVelocity.y}, {newVelocity.z}";
-            //Debug.Log($"Batch {Mathf.CeilToInt(dataByteIndex / 3f)}: {debugBits} : {debugVels}");
+            string debugBits = $"{Convert.ToString(byte1, 2).PadLeft(8, '0')}, {Convert.ToString(byte2, 2).PadLeft(8, '0')}, {Convert.ToString(byte3, 2).PadLeft(8, '0')}";
+            string debugVels = $"{newVelocity.x}, {newVelocity.y}, {newVelocity.z}";
+            Debug.Log($"Batch {Mathf.CeilToInt(currentByteIndex / 3f)}: {debugBits} : {debugVels}");
 
             if (currentByteIndex < avatarByteCount)
             {
+                //funny array math cause aRrAYIndExOutOFbOuNDs
+                switch (avatarByteCount - currentByteIndex)
+                {
+                    case 1:
+                        Debug.Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} ");
+                        break;
+                    case 2:
+                        Debug.Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} {avatarBytes[currentByteIndex + 1]:X2} ");
+                        break;
+                    default:
+                        Debug.Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} {avatarBytes[currentByteIndex + 1]:X2} {avatarBytes[currentByteIndex + 2]:X2} ");
+                        break;
+                }
+
                 float avatarProgress = currentAvatarindex / (float)totalAvatarCount + (1f / totalAvatarCount / 2f);
                 float writeProgress = currentByteIndex / (float)avatarByteCount;
                 
@@ -483,10 +499,12 @@ namespace Nessie.Udon.SaveState
                 currentByteIndex = 0;
                 currentPageIndex = -1;
 
-                //Debug.Log("Starting data verification...");
-                SendCustomEventDelayedFrames(nameof(_VerifyData), 10); // Why 10 frames?
+                Debug.Log("Starting data verification...");
+                SendCustomEventDelayedFrames(nameof(_VerifyData), 20); // Why 10 frames?
             }
         }
+
+        private bool failedVerification = false;
 
         /// <summary>
         /// Verifies if the written data matches the input data. If successful, queues the next write or finishes write operation.
@@ -500,26 +518,28 @@ namespace Nessie.Udon.SaveState
                 currentPageIndex = pageIndex;
                 Vector3 newVel = -(new Vector3(0, pageIndex, 0) + (Vector3.one / 8f)) / 256f / 32f;
                 localPlayer.SetVelocity(localPlayer.GetRotation() * newVel);
+                
                 //just switching the page, wait a frame before continuing
-                //Debug.Log("Verifying page " + pageIndex);
+                Debug.Log("Verifying page " + pageIndex);
                 SendCustomEventDelayedFrames(nameof(_VerifyData), 1);
                 return;
             }
 
             // Verify that the write was successful.
             byte[] inputData = bufferBytes[currentAvatarindex]; // contains all data
+            Debug.Log($"Reading bone data for page {pageIndex}...");                
             byte[] writtenData = _GetAvatarBytes(currentAvatarindex); // only contains current page
-
+            
             // Check for corrupt bytes.
             for (int i = currentByteIndex; i < Mathf.Min(inputData.Length, currentByteIndex+BYTES_PER_PAGE); i++)//only check current page
             {
-                //Debug.Log($"Byte {i} input: {inputData[i]:X2} written: {writtenData[i-currentByteIndex]:X2}");
+                Debug.Log($"Byte {i} input: {inputData[i]:X2} written: {writtenData[i-currentByteIndex]:X2}");
                 if (inputData[i] != writtenData[i - currentByteIndex])
                 {
                     Debug.LogError($"Data verification failed at index {i}: {inputData[i]:X2} doesn't match {writtenData[i-currentByteIndex]:X2}! Write should be restarted!");
                     failReason = $"Data verification failed at index {i}: {inputData[i]:X2} doesn't match {writtenData[i-currentByteIndex]:X2}";
-                    _FailedData();
-                    return;
+
+                    failedVerification = true;
                 }
             }
 
@@ -528,7 +548,9 @@ namespace Nessie.Udon.SaveState
             int avatarByteCount = bufferBytes[currentAvatarindex].Length;
             if (currentByteIndex < avatarByteCount) //next page
             {
-                _VerifyData();//this should be fine(tm) since it'll immediately switch to the next page
+                SendCustomEventDelayedFrames(nameof(_VerifyData), 1); //no its not fine you fuck
+                
+                //_VerifyData();//this should be fine(tm) since it'll immediately switch to the next page
                 return;
             }
 
@@ -544,6 +566,12 @@ namespace Nessie.Udon.SaveState
             }
             else
             {
+                if (failedVerification)
+                {
+                    _FailedData();
+                    return;
+                }
+                
                 _FinishedData();
             }
         }
@@ -551,35 +579,41 @@ namespace Nessie.Udon.SaveState
         public void _GetData() // Read data using finger rotations.
         {
             int pageIndex = currentByteIndex / BYTES_PER_PAGE;
+            
             if (pageIndex != currentPageIndex)
             {
+                Debug.Log("Switching to page " + pageIndex);
+                
                 //switch to this page!
                 currentPageIndex = pageIndex;
                 Vector3 newVel = -(new Vector3(0, pageIndex, 0) + (Vector3.one / 8f)) / 256f / 32f;
                 localPlayer.SetVelocity(localPlayer.GetRotation() * newVel);
+                
                 //just switching the page, wait a frame before continuing
                 SendCustomEventDelayedFrames(nameof(_GetData), 1); // wait, would the particle collision thing call it again anyway?  I guess not
                 return;
             }
-
+            
+            Debug.Log($"Reading bone data for page {pageIndex}...");
+            
             byte[] pageBytes = new byte[BYTES_PER_PAGE];
+            
             _GetAvatarBytes(pageBytes);
-            for(int i = currentByteIndex; i<Mathf.Min(bufferBytes.Length, currentByteIndex+BYTES_PER_PAGE); i++)
-            {
-                bufferBytes[CurrentAvatarIndex][i] = pageBytes[i - currentByteIndex]; // put the page bytes in the right place
-            }
 
+            //put the page bytes in the right place
+            Array.Copy(pageBytes, 0, bufferBytes[currentAvatarindex], currentByteIndex, 
+                Mathf.Min(BYTES_PER_PAGE, bufferBytes[currentAvatarindex].Length - currentByteIndex));
 
             currentByteIndex += BYTES_PER_PAGE; // page is complete
 
             int avatarByteCount = bufferBytes[currentAvatarindex].Length;
             if (currentByteIndex < avatarByteCount) //next page
             {
-                _VerifyData();//this should be fine(tm) since it'll immediately switch to the next page
+                SendCustomEventDelayedFrames(nameof(_GetData), 1);
                 return;
             }
 
-
+            //switch to the next avatar if we have one
             int newAvatarIndex = currentAvatarindex + 1;
             if (newAvatarIndex < totalAvatarCount)
             {
@@ -611,6 +645,17 @@ namespace Nessie.Udon.SaveState
                 UnpackData(bufferBytes);
 
                 Debug.Log("Data has been loaded.");
+                
+                Debug.Log("Data dump:");
+
+                foreach (byte[] data in bufferBytes)
+                {
+                    //log the buffer bytes
+                    for(int i = 0; i < data.Length; i++)
+                    {
+                        Debug.Log($"Byte {i}: {data[i]:X2}");
+                    }
+                }
             }
 
             _SSCallback();
@@ -630,6 +675,22 @@ namespace Nessie.Udon.SaveState
             {
                 dataWriter.ExitStation(localPlayer);
                 localPlayer.Immobilize(false);
+
+                Debug.LogError("Data failed to save.");
+
+                if (UseFallbackAvatar)
+                {
+                    FallbackAvatarPedestal.SetAvatarUse(localPlayer);
+                }
+            }
+            else
+            {
+                Debug.LogError("Data failed to load.");
+                
+                if (UseFallbackAvatar)
+                {
+                    FallbackAvatarPedestal.SetAvatarUse(localPlayer);
+                }
             }
 
             avatarIsLoading = false;
@@ -715,7 +776,9 @@ namespace Nessie.Udon.SaveState
             Quaternion muscleTarget = localPlayer.GetBoneRotation((HumanBodyBones)dataBones[index]);
             Quaternion muscleParent = localPlayer.GetBoneRotation((HumanBodyBones)dataBones[index + 8]); // index out of bounds
 
-            return (ushort)(Mathf.RoundToInt(InverseMuscle(muscleTarget, muscleParent) * 65536) & 0xFFFF);
+            ushort output = (ushort)(Mathf.RoundToInt(InverseMuscle(muscleTarget, muscleParent) * 65536) & 0xFFFF);
+            Debug.Log($"Parameter {index}: {output:X4}");
+            return output;
         }
         
         /// <summary>
