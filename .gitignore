@@ -20,6 +20,9 @@ Assets/Nessie/Udon/*
 !Assets/Nessie/Udon/NUExtensions.meta
 !Assets/Nessie/Udon/NUSaveState
 !Assets/Nessie/Udon/NUSaveState.meta
+!Assets/Testing
+!Assets/Testing.meta
+!Assets/Testing/*
 
 # Exceptions
 Assets/Nessie/Udon/NUSaveState/Avatar/Animators*
