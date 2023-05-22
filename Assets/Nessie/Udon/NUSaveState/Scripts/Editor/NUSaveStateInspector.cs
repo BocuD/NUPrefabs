@@ -359,9 +359,6 @@ namespace Nessie.Udon.SaveState.Internal
             if (!AssetGenerator.TrySaveFolderInProjectPanel("World Animator Folder", AssetGenerator.PathWorld, "Animators", out string animatorPath)) 
                 return;
 
-            System.Diagnostics.Stopwatch timer = new System.Diagnostics.Stopwatch();
-            timer.Start();
-
             bool success = false;
             try
             {
@@ -369,7 +366,7 @@ namespace Nessie.Udon.SaveState.Internal
 
                 var avatars = data.AvatarSlots.Select(slot => slot.Data).ToArray();
                 var controllers = AssetGenerator.CreateWorldAnimators(avatars, animatorPath);
-
+                
                 for (int i = 0; i < avatars.Length; i++)
                 {
                     SerializedObject avatarSO = new SerializedObject(avatars[i]);
@@ -386,11 +383,6 @@ namespace Nessie.Udon.SaveState.Internal
             finally
             {
                 AssetDatabase.StopAssetEditing();
-
-                timer.Stop();
-                
-                if (success)
-                    DebugUtilities.Log($"World asset creation took: {timer.Elapsed:mm\\:ss\\.fff}");
             }
         }
         

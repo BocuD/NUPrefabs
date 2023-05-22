@@ -13,6 +13,8 @@ using Nessie.Udon.SaveState.Data;
 
 using ParameterType = UnityEngine.AnimatorControllerParameterType;
 
+using StateTransition = UnityEditor.Animations.AnimatorStateTransition;
+
 namespace Nessie.Udon.SaveState
 {
     public static class AssetGenerator
@@ -30,7 +32,7 @@ namespace Nessie.Udon.SaveState
         private static readonly string PathAvatarPackages = $"{PathAvatar}/Packages";
         private static readonly string PathAvatarPrefabs = $"{PathAvatar}/Prefabs";
         private static readonly string PathAvatarSOs = $"{PathAvatar}/SOs";
-
+        
         private static readonly string[] MuscleNames = new string[]
         {
             "LeftHand.Index.",
@@ -46,32 +48,56 @@ namespace Nessie.Udon.SaveState
         public static AnimatorController[] CreateWorldAnimators(AvatarData[] avatars, string folderPath)
         {
             AnimatorController[] controllers = new AnimatorController[avatars.Length];
-            Dictionary<string, AnimatorController> controllerDict = new Dictionary<string, AnimatorController>();
-            foreach (AvatarData avatar in avatars)
-            {
-                string parameterName = avatar.GetParameterName();
-                AnimatorController writer = avatar.ParameterWriter;
-                if (writer == null || writer.name != $"SaveState-{parameterName}")
-                {
-                    continue;
-                }
-                
-                if (!controllerDict.ContainsKey(parameterName))
-                    controllerDict.Add(parameterName, writer);
-            }
+
+            System.Diagnostics.Stopwatch timer = new System.Diagnostics.Stopwatch();
+            timer.Start();
+
+            bool success = false;
             
-            for (int avatarIndex = 0; avatarIndex < avatars.Length; avatarIndex++)
+            try
             {
-                AvatarData avatar = avatars[avatarIndex];
+                AssetDatabase.StartAssetEditing();
                 
-                string parameterName = avatar.GetParameterName();
-                if (!controllerDict.ContainsKey(parameterName))
+                Dictionary<string, AnimatorController> controllerDict = new Dictionary<string, AnimatorController>();
+
+                foreach (AvatarData avatar in avatars)
                 {
-                    AnimatorController controller = CreateWorldAnimator(avatar, folderPath);
-                    controllerDict.Add(parameterName, controller);
+                    string parameterName = avatar.GetParameterName();
+                    AnimatorController writer = avatar.ParameterWriter;
+                    if (writer == null || writer.name != $"SaveState-{parameterName}")
+                    {
+                        continue;
+                    }
+
+                    if (!controllerDict.ContainsKey(parameterName))
+                        controllerDict.Add(parameterName, writer);
                 }
+
+                for (int avatarIndex = 0; avatarIndex < avatars.Length; avatarIndex++)
+                {
+                    AvatarData avatar = avatars[avatarIndex];
+
+                    string parameterName = avatar.GetParameterName();
+                    if (!controllerDict.ContainsKey(parameterName))
+                    {
+                        AnimatorController controller = CreateWorldAnimator(avatar, folderPath);
+                        controllerDict.Add(parameterName, controller);
+                    }
+
+                    controllers[avatarIndex] = controllerDict[parameterName];
+                }
+
+                success = true;
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+                AssetDatabase.StopAssetEditing();
                 
-                controllers[avatarIndex] = controllerDict[parameterName];
+                timer.Stop();
+                
+                if (success)
+                    DebugUtilities.Log($"World asset creation took: {timer.Elapsed:mm\\:ss\\.fff}");
             }
 
             return controllers;
@@ -87,7 +113,7 @@ namespace Nessie.Udon.SaveState
             AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
             
             string parameterName = avatar.GetParameterName();
-
+            
             #region Parameters
             
             string[] velocityNames = new string[] { "VelocityX", "VelocityY", "VelocityZ" }; // Used when preparing the Parameters and Byte Layers.
@@ -181,19 +207,19 @@ namespace Nessie.Udon.SaveState
 
                 AnimatorState finalState = byteMachine.AddStateNoUndo("Finished", new Vector3(200, 1700));
                 finalState.writeDefaultValues = false;
-
+                
                 AnimatorState[] byteStates = new AnimatorState[16];
                 for (int stepIndex = 0; stepIndex < 8; stepIndex++)
                 {
                     float bitDenominator = Mathf.Pow(2, stepIndex + 1);
                     
-                    var ignoreState = byteMachine.AddStateNoUndo($"Ignore {stepIndex}", new Vector3(300, 200 + stepIndex * 200));
+                    AnimatorState ignoreState = byteMachine.AddStateNoUndo($"Ignore {stepIndex}", new Vector3(300, 200 + stepIndex * 200));
                     ignoreState.writeDefaultValues = false;
                     ignoreState.timeParameterActive = true;
                     ignoreState.timeParameter = $"b{parameterIndex}";
                     ignoreState.motion = identityClips[parameterIndex];
 
-                    var writeState = byteMachine.AddStateNoUndo($"b{parameterIndex}-(1/{bitDenominator})", new Vector3(100, 200 + stepIndex * 200));
+                    AnimatorState writeState = byteMachine.AddStateNoUndo($"b{parameterIndex}-(1/{bitDenominator})", new Vector3(100, 200 + stepIndex * 200));
                     writeState.writeDefaultValues = false;
                     writeState.timeParameterActive = true;
                     writeState.timeParameter = $"b{parameterIndex}";
@@ -203,28 +229,28 @@ namespace Nessie.Udon.SaveState
                     {
                         for (int i = 0; i < 2; i++)
                         {
-                            var ignoreTransition = byteStates[(stepIndex - 1) * 2 + i].AddTransitionNoUndo(ignoreState);
+                            StateTransition ignoreTransition = byteStates[(stepIndex - 1) * 2 + i].AddTransitionNoUndo(ignoreState);
                             SetNoTransitionTimes(ignoreTransition);
                             ignoreTransition.AddConditionNoUndo(AnimatorConditionMode.Less, 1 / bitDenominator, $"b{parameterIndex}");
 
-                            var writeTransition = byteStates[(stepIndex - 1) * 2 + i].AddTransitionNoUndo(writeState);
+                            StateTransition writeTransition = byteStates[(stepIndex - 1) * 2 + i].AddTransitionNoUndo(writeState);
                             SetNoTransitionTimes(writeTransition);
                             writeTransition.AddConditionNoUndo(AnimatorConditionMode.If, 0, "IgnoreTransition");
                         }
                     }
                     else
                     {
-                        var ignoreTransition = transferState.AddTransitionNoUndo(ignoreState);
+                        StateTransition ignoreTransition = transferState.AddTransitionNoUndo(ignoreState);
                         SetNoTransitionTimes(ignoreTransition);
                         ignoreTransition.AddConditionNoUndo(AnimatorConditionMode.Less, 1 / bitDenominator, $"b{parameterIndex}");
                         ignoreTransition.AddConditionNoUndo(AnimatorConditionMode.Equals, layerIndex / 3 + 1, "Batch");
 
-                        var writeTransition = transferState.AddTransitionNoUndo(writeState);
+                        StateTransition writeTransition = transferState.AddTransitionNoUndo(writeState);
                         SetNoTransitionTimes(writeTransition);
                         writeTransition.AddConditionNoUndo(AnimatorConditionMode.Equals, layerIndex / 3 + 1, "Batch");
                     }
 
-                    var byteDriver = writeState.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                    VRCAvatarParameterDriver byteDriver = writeState.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
                     // byte debugByte = (byte)(1 << (7 - stepIndex));
                     // byteDriver.debugString = $"[NUSS] b{layerIndex} += {Convert.ToString(debugByte, 2).PadLeft(8, '0')}";
 
@@ -242,11 +268,11 @@ namespace Nessie.Udon.SaveState
                     byteStates[stepIndex * 2] = writeState;
                 }
 
-                var finalTransitionL = byteStates[14].AddTransitionNoUndo(finalState);
+                StateTransition finalTransitionL = byteStates[14].AddTransitionNoUndo(finalState);
                 SetNoTransitionTimes(finalTransitionL);
                 finalTransitionL.AddConditionNoUndo(AnimatorConditionMode.If, 0, "IgnoreTransition");
 
-                var finalTransitionR = byteStates[15].AddTransitionNoUndo(finalState);
+                StateTransition finalTransitionR = byteStates[15].AddTransitionNoUndo(finalState);
                 SetNoTransitionTimes(finalTransitionR);
                 finalTransitionR.AddConditionNoUndo(AnimatorConditionMode.If, 0, "IgnoreTransition");
             }
@@ -318,7 +344,7 @@ namespace Nessie.Udon.SaveState
                 newStateMachine.states = newChildStates;
 
 
-                AnimatorStateTransition newBlendTransition;
+                StateTransition newBlendTransition;
                 if (page == -1)
                 {
                     newBlendTransition = newDefaultState.AddTransitionNoUndo(newBlendState);
@@ -429,7 +455,7 @@ namespace Nessie.Udon.SaveState
             {
                 batchStates[stateIndex] = batchMachine.AddStateNoUndo($"Batch {stateIndex}", new Vector3(200, 100 * stateIndex));
 
-                var batchTransition = batchStates[stateIndex - 1].AddTransitionNoUndo(batchStates[stateIndex]);
+                StateTransition batchTransition = batchStates[stateIndex - 1].AddTransitionNoUndo(batchStates[stateIndex]);
                 SetNoTransitionTimes(batchTransition);
 
                 if (stateIndex == 1)
@@ -439,10 +465,10 @@ namespace Nessie.Udon.SaveState
                 }
                 batchTransition.AddConditionNoUndo(stateIndex % 2 == 0 ? AnimatorConditionMode.Less : AnimatorConditionMode.Greater, 0.03125f, "VelocityX");
                 
-                var batchDriver = batchStates[stateIndex].AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                VRCAvatarParameterDriver batchDriver = batchStates[stateIndex].AddStateMachineBehaviour<VRCAvatarParameterDriver>();
                 // batchDriver.debugString = $"[NUSS] Batch: {stateIndex}";
 
-                var batchParameters = new List<VRC_AvatarParameterDriver.Parameter>
+                List<VRC_AvatarParameterDriver.Parameter> batchParameters = new List<VRC_AvatarParameterDriver.Parameter>
                 {
                     new VRC_AvatarParameterDriver.Parameter()
                     {
@@ -472,7 +498,7 @@ namespace Nessie.Udon.SaveState
             machine.exitPosition = new Vector2(-30, 100);
         }
         
-        private static void SetNoTransitionTimes(AnimatorStateTransition transition)
+        private static void SetNoTransitionTimes(StateTransition transition)
         {
             transition.duration = 0f;
             transition.exitTime = 0f;
@@ -570,9 +596,9 @@ namespace Nessie.Udon.SaveState
         {
             ReadyPath(folderPath);
             
-            var controller = CreateAvatarAnimator(avatar, $"{PathAvatar}/Animators");
-            var menu = CreateAvatarMenu(avatar, $"{PathAvatar}/Expressions");
-            var parameters = CreateAvatarParameters(avatar, $"{PathAvatar}/Expressions");
+            AnimatorController controller = CreateAvatarAnimator(avatar, $"{PathAvatar}/Animators");
+            VRCExpressionsMenu menu = CreateAvatarMenu(avatar, $"{PathAvatar}/Expressions");
+            VRCExpressionParameters parameters = CreateAvatarParameters(avatar, $"{PathAvatar}/Expressions");
             
             string[] assetPaths = new string[]
             {
