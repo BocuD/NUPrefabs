@@ -43,27 +43,37 @@ public class NUSaveStateTester : UdonSharpBehaviour
     {
         if (Input.GetKeyDown(KeyCode.L))
         {
-            nuSaveState._SSLoad();
+            Load();
         }
 
         if (Input.GetKeyDown(KeyCode.W))
         {
-            byte b = 0;
-            //generate random quaternions for q0-15
-            for (int i = 0; i < 32; i++)
-            {
-                ulong data = 0;
-                for (int j = 0; j < 8; j++)
-                {
-                    data |= (ulong)b << (j * 8);
-                    b++;
-                }
-                
-                SetProgramVariable("q" + i, data);
-            }
-
-            nuSaveState._SSSave();
+            Save();
         }
+    }
+
+    public void Save()
+    {
+        ulong b = 0;
+        //generate random quaternions for q0-15
+        for (int i = 0; i < 32; i++)
+        {
+            ulong data = 0;
+            for (int j = 0; j < 8; j++)
+            {
+                data |= b << (j * 8);
+                b++;
+            }
+                
+            SetProgramVariable("q" + i, data);
+        }
+
+        nuSaveState._SSSave();
+    }
+
+    public void Load()
+    {
+        nuSaveState._SSLoad();
     }
 
     public void _SSSaved()

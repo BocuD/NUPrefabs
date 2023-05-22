@@ -1,5 +1,6 @@
 ﻿
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 using VRC.SDKBase;
@@ -129,7 +130,8 @@ namespace Nessie.Udon.SaveState
         [NonSerialized] public bool UseFallbackAvatar = true;
 
         public bool debugMode = false;
-
+        public TextMeshProUGUI console;
+        
         #endregion Public Fields
 
         #region Public Properties
@@ -165,7 +167,7 @@ namespace Nessie.Udon.SaveState
         {
             if (avatarIsLoading)
             {
-                Debug.Log($"Detected buffer avatar: {currentAvatarindex}");
+                Log($"Detected buffer avatar: {currentAvatarindex}");
 
                 avatarCurrentDuration = 0f;
                 avatarIsLoading = false;
@@ -198,7 +200,7 @@ namespace Nessie.Udon.SaveState
         {
             if (status != StatusEnum.Idle)
             {
-                Debug.LogWarning($"Cannot save until the NUSaveState is idle. Status: {status}");
+                LogWarning($"Cannot save until the NUSaveState is idle. Status: {status}");
                 return;
             }
             
@@ -220,7 +222,7 @@ namespace Nessie.Udon.SaveState
         {
             if (status != StatusEnum.Idle)
             {
-                Debug.LogWarning($"Cannot save until the NUSaveState is idle. Status: {status}");
+                LogWarning($"Cannot save until the NUSaveState is idle. Status: {status}");
                 return;
             }
             
@@ -288,7 +290,7 @@ namespace Nessie.Udon.SaveState
 
         private void LogVersion()
         {
-            Debug.Log($"Loaded Nessie's Udon Save State {PACKAGE_VERSION}");
+            Log($"Loaded Nessie's Udon Save State {PACKAGE_VERSION}");
         }
         
         private void Validate()
@@ -297,40 +299,40 @@ namespace Nessie.Udon.SaveState
 
             if (Version != PACKAGE_VERSION)
             {
-                Debug.LogWarning($"NUSaveState version mismatch. Behaviour: {Version} Release: {PACKAGE_VERSION}");
+                LogWarning($"NUSaveState version mismatch. Behaviour: {Version} Release: {PACKAGE_VERSION}");
             }
             
             if (parameterWriters.Length != totalAvatarCount)
             {
-                Debug.LogError("NUSaveState is missing animator controllers.");
+                LogError("NUSaveState is missing animator controllers.");
             }
 
             if (dataAvatarIDs.Length != totalAvatarCount)
             {
-                Debug.LogError("NUSaveState is missing avatar blueprints.");
+                LogError("NUSaveState is missing avatar blueprints.");
             }
 
             if (dataKeyCoords.Length != totalAvatarCount)
             {
-                Debug.LogError("NUSaveState is missing key coordinates.");
+                LogError("NUSaveState is missing key coordinates.");
             }
 
             if (gameObject.layer != 5)
             {
-                Debug.LogError("NUSaveState behaviour is not situated on the UI layer.");
+                LogError("NUSaveState behaviour is not situated on the UI layer.");
             }
             
             keyDetector = GetComponent<BoxCollider>();
             if (!keyDetector)
             {
-                Debug.LogError("NUSaveState is missing the BoxCollider.");
+                LogError("NUSaveState is missing the BoxCollider.");
             }
 
             foreach (RuntimeAnimatorController controller in parameterWriters)
             {
                 if (!controller)
                 {
-                    Debug.LogError("NUSaveState is missing one or more Parameter Writers.");
+                    LogError("NUSaveState is missing one or more Parameter Writers.");
                     break;
                 }
             }
@@ -377,7 +379,7 @@ namespace Nessie.Udon.SaveState
             currentByteIndex = 0;
             currentPageIndex = -1;
 
-            Debug.Log($"Switching avatar to buffer avatar: {currentAvatarindex} ({dataAvatarPedestals[currentAvatarindex].blueprintId})");
+            Log($"Switching avatar to buffer avatar: {currentAvatarindex} ({dataAvatarPedestals[currentAvatarindex].blueprintId})");
             dataAvatarPedestals[currentAvatarindex].SetAvatarUse(localPlayer);
 
             avatarCurrentDuration = avatarTimeoutDuration;
@@ -409,7 +411,7 @@ namespace Nessie.Udon.SaveState
                 }
                 else
                 {
-                    Debug.LogError("Data avatar took too long to load or avatar ID is mismatched.");
+                    LogError("Data avatar took too long to load or avatar ID is mismatched.");
                     failReason = "Data avatar took too long to load or avatar ID is mismatched.";
                     _FailedData();
                 }
@@ -440,9 +442,9 @@ namespace Nessie.Udon.SaveState
 
         public void _SetData() // Write data by doing float additions.
         {
-            Debug.Log($"Writing data for avatar {currentAvatarindex}: data byte index {currentByteIndex}");
+            Log($"Writing data for avatar {currentAvatarindex}: data byte index {currentByteIndex}");
 
-            if (currentPageIndex == -1) Debug.Log("Saving Data...");
+            if (currentPageIndex == -1) Log("Saving Data...");
             
             int avatarByteCount = bufferBytes[currentAvatarindex].Length;
 
@@ -462,7 +464,7 @@ namespace Nessie.Udon.SaveState
 
             string debugBits = $"{Convert.ToString(byte1, 2).PadLeft(8, '0')}, {Convert.ToString(byte2, 2).PadLeft(8, '0')}, {Convert.ToString(byte3, 2).PadLeft(8, '0')}";
             string debugVels = $"{newVelocity.x}, {newVelocity.y}, {newVelocity.z}";
-            Debug.Log($"Batch {Mathf.CeilToInt(currentByteIndex / 3f)}: {debugBits} : {debugVels}");
+            Log($"Batch {Mathf.CeilToInt(currentByteIndex / 3f)}: {debugBits} : {debugVels}");
 
             if (currentByteIndex < avatarByteCount)
             {
@@ -470,13 +472,13 @@ namespace Nessie.Udon.SaveState
                 switch (avatarByteCount - currentByteIndex)
                 {
                     case 1:
-                        Debug.Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} ");
+                        Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} ");
                         break;
                     case 2:
-                        Debug.Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} {avatarBytes[currentByteIndex + 1]:X2} ");
+                        Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} {avatarBytes[currentByteIndex + 1]:X2} ");
                         break;
                     default:
-                        Debug.Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} {avatarBytes[currentByteIndex + 1]:X2} {avatarBytes[currentByteIndex + 2]:X2} ");
+                        Log($"Saving {currentByteIndex}: {avatarBytes[currentByteIndex]:X2} {avatarBytes[currentByteIndex + 1]:X2} {avatarBytes[currentByteIndex + 2]:X2} ");
                         break;
                 }
 
@@ -499,7 +501,7 @@ namespace Nessie.Udon.SaveState
                 currentByteIndex = 0;
                 currentPageIndex = -1;
 
-                Debug.Log("Starting data verification...");
+                Log("Starting data verification...");
                 SendCustomEventDelayedFrames(nameof(_VerifyData), 20); // Why 10 frames?
             }
         }
@@ -520,23 +522,23 @@ namespace Nessie.Udon.SaveState
                 localPlayer.SetVelocity(localPlayer.GetRotation() * newVel);
                 
                 //just switching the page, wait a frame before continuing
-                Debug.Log("Verifying page " + pageIndex);
+                Log("Verifying page " + pageIndex);
                 SendCustomEventDelayedFrames(nameof(_VerifyData), 1);
                 return;
             }
 
             // Verify that the write was successful.
             byte[] inputData = bufferBytes[currentAvatarindex]; // contains all data
-            Debug.Log($"Reading bone data for page {pageIndex}...");                
+            Log($"Reading bone data for page {pageIndex}...");                
             byte[] writtenData = _GetAvatarBytes(currentAvatarindex); // only contains current page
             
             // Check for corrupt bytes.
             for (int i = currentByteIndex; i < Mathf.Min(inputData.Length, currentByteIndex+BYTES_PER_PAGE); i++)//only check current page
             {
-                Debug.Log($"Byte {i} input: {inputData[i]:X2} written: {writtenData[i-currentByteIndex]:X2}");
+                Log($"Byte {i} input: {inputData[i]:X2} written: {writtenData[i-currentByteIndex]:X2}");
                 if (inputData[i] != writtenData[i - currentByteIndex])
                 {
-                    Debug.LogError($"Data verification failed at index {i}: {inputData[i]:X2} doesn't match {writtenData[i-currentByteIndex]:X2}! Write should be restarted!");
+                    LogError($"Data verification failed at index {i}: {inputData[i]:X2} doesn't match {writtenData[i-currentByteIndex]:X2}! Write should be restarted!");
                     failReason = $"Data verification failed at index {i}: {inputData[i]:X2} doesn't match {writtenData[i-currentByteIndex]:X2}";
 
                     failedVerification = true;
@@ -582,7 +584,7 @@ namespace Nessie.Udon.SaveState
             
             if (pageIndex != currentPageIndex)
             {
-                Debug.Log("Switching to page " + pageIndex);
+                Log("Switching to page " + pageIndex);
                 
                 //switch to this page!
                 currentPageIndex = pageIndex;
@@ -594,7 +596,7 @@ namespace Nessie.Udon.SaveState
                 return;
             }
             
-            Debug.Log($"Reading bone data for page {pageIndex}...");
+            Log($"Reading bone data for page {pageIndex}...");
             
             byte[] pageBytes = new byte[BYTES_PER_PAGE];
             
@@ -638,22 +640,22 @@ namespace Nessie.Udon.SaveState
                 dataWriter.ExitStation(localPlayer); // Only exit the station once the last animator states have been reached.
                 localPlayer.Immobilize(false);
 
-                Debug.Log("Data has been saved.");
+                Log("Data has been saved.");
             }
             else
             {
                 UnpackData(bufferBytes);
 
-                Debug.Log("Data has been loaded.");
+                Log("Data has been loaded.");
                 
-                Debug.Log("Data dump:");
+                Log("Data dump:");
 
                 foreach (byte[] data in bufferBytes)
                 {
                     //log the buffer bytes
                     for(int i = 0; i < data.Length; i++)
                     {
-                        Debug.Log($"Byte {i}: {data[i]:X2}");
+                        Log($"Byte {i}: {data[i]:X2}");
                     }
                 }
             }
@@ -676,7 +678,7 @@ namespace Nessie.Udon.SaveState
                 dataWriter.ExitStation(localPlayer);
                 localPlayer.Immobilize(false);
 
-                Debug.LogError("Data failed to save.");
+                LogError("Data failed to save.");
 
                 if (UseFallbackAvatar)
                 {
@@ -685,7 +687,7 @@ namespace Nessie.Udon.SaveState
             }
             else
             {
-                Debug.LogError("Data failed to load.");
+                LogError("Data failed to load.");
                 
                 if (UseFallbackAvatar)
                 {
@@ -777,7 +779,7 @@ namespace Nessie.Udon.SaveState
             Quaternion muscleParent = localPlayer.GetBoneRotation((HumanBodyBones)dataBones[index + 8]); // index out of bounds
 
             ushort output = (ushort)(Mathf.RoundToInt(InverseMuscle(muscleTarget, muscleParent) * 65536) & 0xFFFF);
-            Debug.Log($"Parameter {index}: {output:X4}");
+            Log($"Parameter {index}: {output:X4}");
             return output;
         }
         
@@ -815,5 +817,26 @@ namespace Nessie.Udon.SaveState
         }
 
         #endregion SaveState Data
+        
+        #region Logging
+
+        private void Log(string contents)
+        {
+            Debug.Log(contents);
+            console.text += contents + "\n";
+        }
+
+        private void LogWarning(string contents)
+        {
+            Debug.LogWarning(contents);
+            console.text += "<color=yellow>" + contents + "</color>\n";
+        }
+        
+        private void LogError(string contents)
+        {
+            Debug.LogError(contents);
+            console.text += "<color=red>" + contents + "</color>\n";
+        }
+        #endregion
     }
 }
