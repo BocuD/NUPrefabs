@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14ca0128dafb65540b9a02dfd3b96f8a, type: 3}
+  m_Name: Avatar_Data_Ulong
+  m_EditorClassIdentifier: 
+  AvatarBlueprint: avtr_90eb5b78-d603-427b-aa26-8f17e8fcd497
+  EncryptionKey: a4a94157-6dcd-4d69-bd75-6cd333294463
+  ParameterWriter: {fileID: 9100000, guid: 468796a8979414641a2c2ee2d283bd12, type: 2}
+  IsLegacy: 0
+  ParameterName: parameter
+  KeyCoordinate: {x: 0, y: 0, z: 0}
+  VariableSlots:
+  - Name: q0
+    TypeEnum: 4
+  - Name: q1
+    TypeEnum: 4
+  - Name: q2
+    TypeEnum: 4
+  - Name: q3
+    TypeEnum: 4
+  - Name: q4
+    TypeEnum: 4
+  - Name: q5
+    TypeEnum: 4
+  - Name: q6
+    TypeEnum: 4
+  - Name: q7
+    TypeEnum: 4
+  - Name: q8
+    TypeEnum: 4
+  - Name: q9
+    TypeEnum: 4
+  - Name: q10
+    TypeEnum: 4
+  - Name: q11
+    TypeEnum: 4
+  - Name: q12
+    TypeEnum: 4
+  - Name: q13
+    TypeEnum: 4
+  - Name: q14
+    TypeEnum: 4
+  - Name: q15
+    TypeEnum: 4
+  - Name: q16
+    TypeEnum: 4
+  - Name: q17
+    TypeEnum: 4
+  - Name: q18
+    TypeEnum: 4
+  - Name: q19
+    TypeEnum: 4
+  - Name: q20
+    TypeEnum: 4
+  - Name: q21
+    TypeEnum: 4
+  - Name: q22
+    TypeEnum: 4
+  - Name: q23
+    TypeEnum: 4
+  - Name: q24
+    TypeEnum: 4
+  - Name: q25
+    TypeEnum: 4
+  - Name: q26
+    TypeEnum: 4
+  - Name: q27
+    TypeEnum: 4
+  - Name: q28
+    TypeEnum: 4
+  - Name: q29
+    TypeEnum: 4
+  - Name: q30
+    TypeEnum: 4
+  - Name: q31
+    TypeEnum: 4
+  BitCount: 2048
