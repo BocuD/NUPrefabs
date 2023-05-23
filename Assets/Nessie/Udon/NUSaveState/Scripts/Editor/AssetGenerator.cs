@@ -251,8 +251,9 @@ namespace Nessie.Udon.SaveState
                     }
 
                     VRCAvatarParameterDriver byteDriver = writeState.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                    // byte debugByte = (byte)(1 << (7 - stepIndex));
-                    // byteDriver.debugString = $"[NUSS] b{layerIndex} += {Convert.ToString(debugByte, 2).PadLeft(8, '0')}";
+                    
+                    byte debugByte = (byte)(1 << (7 - stepIndex));
+                    byteDriver.debugString = $"[NUSS] b{layerIndex} += {Convert.ToString(debugByte, 2).PadLeft(8, '0')}";
 
                     byteDriver.parameters = new List<VRC_AvatarParameterDriver.Parameter>()
                     {
