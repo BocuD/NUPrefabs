@@ -186,10 +186,13 @@ MonoBehaviour:
   stationPrefab: {fileID: 1852400263297152911}
   pedestalContainer: {fileID: 8000936732478632560}
   pedestalPrefab: {fileID: 1977753435057831612}
-  parameterWriters: []
+  parameterWriters:
+  - {fileID: 9100000, guid: 468796a8979414641a2c2ee2d283bd12, type: 2}
   dataAvatarIDs: []
   dataKeyCoords: []
   bufferBitCounts: 
+  debugMode: 0
+  console: {fileID: 0}
 --- !u!114 &8000936731730785914
 MonoBehaviour:
   m_ObjectHideFlags: 0

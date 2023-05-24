@@ -90,6 +90,7 @@ namespace Nessie.Udon.SaveState
                 if (data)
                 {
                     writers[avatarIndex] = data.ParameterWriter;
+                    
                     avatarIDs[avatarIndex] = data.AvatarBlueprint;
                     coordinates[avatarIndex] = data.GetKeyCoordinate() * 50f;
                     bitCounts[avatarIndex] = data.BitCount;
@@ -120,6 +121,8 @@ namespace Nessie.Udon.SaveState
                 field?.SetValue(obj, value);
             }
 
+            
+            //comment this out if it kills itself again for absolutely no fucking reason whatsoever period :cry: 
             SetFieldValue(saveState, "parameterWriters", writers);
             
             SetFieldValue(saveState, "dataAvatarIDs", avatarIDs);
@@ -158,7 +161,7 @@ namespace Nessie.Udon.SaveState
                 SetFieldValue(saveState, "bufferTypes", variableTypes);
             }
             
-            PrefabUtility.RecordPrefabInstancePropertyModifications(saveState);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(saveState); ;
         }
         
         public static NUSaveStateData GetData(NUSaveState saveState)

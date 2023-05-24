@@ -118,13 +118,26 @@ public class NUSaveStateTester : UdonSharpBehaviour
         {
             case SaveMode.Quaternion:
 
+                quaternionSaveState.console.text = "";
+                
                 if (generateRandom)
                 {
+                    //seed the unity random with time
+                    Random.InitState(DateTime.Now.Millisecond);
+                    
+                    //get a seed for the quaternion random with the primed random
+                    int seed = Random.Range(int.MinValue, int.MaxValue);
+                    
+                    //seed the unity random with the int
+                    Random.InitState(seed);
+                    
+                    quaternionSaveState.console.text += "Generated random seed: " + seed + "\n";
+                    
                     targetQuaternions = new Quaternion[16];
                     //gerenate random quaternions for targetQuaternions
                     for (int i = 0; i < 16; i++)
                     {
-                        targetQuaternions[i] = Random.rotation;
+                        targetQuaternions[i] = UnityEngine.Random.rotation;
                     }
                 }
 
@@ -134,7 +147,6 @@ public class NUSaveStateTester : UdonSharpBehaviour
                     SetProgramVariable("q" + i, targetQuaternions[i]);
                 }
                 
-                quaternionSaveState.console.text = "";
                 quaternionSaveState._SSSave();
                 break;
             
